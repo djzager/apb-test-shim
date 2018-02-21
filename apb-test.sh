@@ -13,27 +13,14 @@ yellow='\033[0;33m'
 neutral='\033[0m'
 
 apb_name=${apb_name:-"test-apb"}
-test_idempotence=${test_idempotence:-"true"}
 
 function run_apb() {
     local image=$1
     local namespace=$2
     local action=$3
-    local test_idempotence=${4:-"true"}
 
 	printf ${green}"Running ${action} playbook"${neutral}
 	docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $image $action --extra-vars "namespace=$namespace"
-
-	if [ "$test_idempotence" = true ]; then
-		# Run Ansible playbook again (idempotence test).
-		printf ${green}"Running ${action} playbook again: idempotence test"${neutral}
-		idempotence=$(mktemp)
-        docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $image $action --extra-vars "namespace=$namespace"
-		tail $idempotence \
-		| grep -q 'changed=0.*failed=0' \
-		&& (printf ${green}'Idempotence test: pass'${neutral}"\n") \
-		|| (printf ${red}'Idempotence test: fail'${neutral}"\n" && exit 1)
-	fi
 }
 
 printf ${yellow}"Setting up docker for insecure registry"${neutral}"\n"
@@ -82,7 +69,7 @@ printf "\n"
 if [ -f "$PWD/playbooks/test.yml" ]; then
     namespace="$apb_name-test"
     oc new-project $namespace
-    run_apb $apb_name $namespace test false
+    run_apb $apb_name $namespace test
 else
     printf ${yellow}"No test playbook"${neutral}"\n"
 fi
