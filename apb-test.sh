@@ -2,11 +2,15 @@
 
 # Exit on any individual command failure.
 set -e
+# Show trace.
+set -x
 
 # Pretty colors.
 red='\033[0;31m'
 green='\033[0;32m'
 neutral='\033[0m'
+
+export ANSIBLE_ROLES_PATH=$ANSIBLE_ROLES_PATH:$PWD/roles
 
 printf ${green}"Setting up docker for insecure registry"${neutral}"\n"
 sudo apt-get update -qq
@@ -26,7 +30,7 @@ printf "\n"
 printf ${green}"Verify committed APB spec matches Dockerfile"${neutral}"\n"
 apb build
 if ! git diff --exit-code
-	then echo "Committed APB spec differs from built apb.yml spec"
+	then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
 fi
 printf "\n"
