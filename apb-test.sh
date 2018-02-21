@@ -59,7 +59,7 @@ done
 printf "\n"
 
 printf ${green}"Testing APB"${neutral}"\n"
-apb build -t $apb_name
+apb build --tag $apb_name
 if ! git diff --exit-code
 	then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
