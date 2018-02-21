@@ -1,0 +1,19 @@
+---
+services: docker
+sudo: required
+
+env:
+  - OPENSHIFT_VERSION=latest
+  - OPENSHIFT_VERSION=v3.9
+
+script:
+  # TODO: Get IP of apb-test shim
+  # Download test shim.
+  - wget -O ${PWD}/apb-test.sh ${APB_TEST_SHIM}
+  - chmod +x ${PWD}/apb-test.sh
+
+  # Run tests.
+  - ${PWD}/tests/test.sh
+
+# notifications:
+#  webhooks: https://galaxy.ansible.com/api/v1/notifications/
