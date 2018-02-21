@@ -12,7 +12,6 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 neutral='\033[0m'
 
-export ANSIBLE_ROLES_PATH=$ANSIBLE_ROLES_PATH:$PWD/roles
 apb_name=${apb_name:-"test-apb"}
 test_idempotence=${test_idempotence:-"true"}
 
@@ -53,8 +52,8 @@ yamllint apb.yml
 printf "\n"
 
 printf ${green}"Linting playbooks"${neutral}"\n"
-for PLAYBOOK in playbooks/*.yml
-	do ansible-playbook $PLAYBOOK --syntax-check
+for PLAYBOOK in playbooks/*.yml; do
+    ANSIBLE_ROLES_PATH=$ANSIBLE_ROLES_PATH:$PWD/roles ansible-playbook $PLAYBOOK --syntax-check
 done
 printf "\n"
 
