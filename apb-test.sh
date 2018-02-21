@@ -17,17 +17,19 @@ apb_name=${apb_name:-"test-apb"}
 test_idempotence=${test_idempotence:-"true"}
 
 function run_apb() {
-    local apb_name=$1
-    local action=$2
+    local image=$1
+    local namespace=$2
+    local action=$3
+    local test_idempotence=${4:-"true"}
 
 	printf ${green}"Running ${action} playbook"${neutral}
-	docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $apb_name $action --extra-vars "namespace=$apb_name"
+	docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $image $action --extra-vars "namespace=$namespace"
 
 	if [ "$test_idempotence" = true ]; then
 		# Run Ansible playbook again (idempotence test).
 		printf ${green}"Running ${action} playbook again: idempotence test"${neutral}
 		idempotence=$(mktemp)
-		docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $apb_name $action --extra-vars "namespace=$apb_name" | tee -a $idempotence
+        docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $image $action --extra-vars "namespace=$namespace"
 		tail $idempotence \
 		| grep -q 'changed=0.*failed=0' \
 		&& (printf ${green}'Idempotence test: pass'${neutral}"\n") \
@@ -57,7 +59,7 @@ done
 printf "\n"
 
 printf ${green}"Testing APB"${neutral}"\n"
-apb build
+apb build -t $apb_name
 if ! git diff --exit-code
 	then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
@@ -70,10 +72,18 @@ oc login -u system:admin
 oc new-project $apb_name
 
 printf ${green}"Provision APB"${neutral}"\n"
-run_apb $apb_name provision
+run_apb $apb_name $apb_name provision $test_idempotence
 oc get all -n $apb_name
 
 printf ${green}"Deprovision APB"${neutral}"\n"
-run_apb $apb_name deprovision
+run_apb $apb_name $apb_name deprovision $test_idempotence
 oc get all -n $apb_name
 printf "\n"
+
+if [ -f "$PWD/playbooks/test.yml" ]; then
+    namespace="$apb_name-test"
+    oc new-project $namespace
+    run_apb $apb_name $namespace test false
+else
+    printf ${yellow}"No test playbook"${neutral}"\n"
+fi
