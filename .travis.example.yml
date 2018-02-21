@@ -7,9 +7,8 @@ env:
   - OPENSHIFT_VERSION=v3.9
 
 script:
-  # TODO: Get IP of apb-test shim
   # Download test shim.
-  - wget -O ${PWD}/apb-test.sh ${APB_TEST_SHIM}
+  - wget -O ${PWD}/apb-test.sh https://raw.githubusercontent.com/djzager/apb-test-shim/master/apb-test.sh
   - chmod +x ${PWD}/apb-test.sh
 
   # Run tests.
