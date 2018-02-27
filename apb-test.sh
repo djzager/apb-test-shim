@@ -19,7 +19,7 @@ function run_apb() {
     local namespace=$2
     local action=$3
 
-	printf ${green}"Running ${action} playbook"${neutral}
+	printf ${green}"Running ${action} playbook"${neutral}"\n"
 	docker run --rm --net=host -v $HOME/.kube:/opt/apb/.kube:z -u $UID $image $action --extra-vars "namespace=$namespace"
 }
 
@@ -38,18 +38,25 @@ printf ${green}"Linting apb.yml"${neutral}"\n"
 yamllint apb.yml
 printf "\n"
 
-printf ${green}"Linting playbooks"${neutral}"\n"
-for PLAYBOOK in playbooks/*.yml; do
-    ANSIBLE_ROLES_PATH=$ANSIBLE_ROLES_PATH:$PWD/roles ansible-playbook $PLAYBOOK --syntax-check
-done
-printf "\n"
-
-printf ${green}"Testing APB"${neutral}"\n"
+printf ${green}"Building apb"${neutral}"\n"
 apb build --tag $apb_name
 if ! git diff --exit-code
 	then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
 fi
+
+printf ${green}"Linting playbooks"${neutral}"\n"
+playbooks=$(find playbooks -type f -printf "%f\n" -name '*.yml' -o -name '*.yaml')
+if [ -z "$playbooks" ]; then
+    printf ${red}"No playbooks"${neutral}"\n"
+    exit 1
+fi
+for playbook in $playbooks; do
+    docker run --entrypoint ansible-playbook $apb_name /opt/apb/actions/$playbook --syntax-check
+done
+printf "\n"
+
+printf ${green}"Testing APB"${neutral}"\n"
 
 printf ${yellow}"Bringing up openshift cluster, log in, and create project"${neutral}"\n"
 sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
@@ -66,10 +73,9 @@ run_apb $apb_name $apb_name deprovision $test_idempotence
 oc get all -n $apb_name
 printf "\n"
 
-if [ -f "$PWD/playbooks/test.yml" ]; then
-    namespace="$apb_name-test"
-    oc new-project $namespace
-    run_apb $apb_name $namespace test
+if [ -f "$PWD/tests/test.yml" ]; then
+    # TODO: Run test playbook(s)
+    printf ${green}"Test playbook exists"${neutral}"\n"
 else
     printf ${yellow}"No test playbook"${neutral}"\n"
 fi
