@@ -14,7 +14,27 @@ neutral='\033[0m'
 
 apb_name=${apb_name:-"test-apb"}
 
-function test_openshift() {
+function run_apb() {
+    local method=$1
+    local pod_name="$apb_name-$method"
+
+    printf ${green}"Run $method Playbook"${neutral}"\n"
+    $CMD run "$pod_name" \
+        --namespace=$apb_name \
+        --env="POD_NAME=$pod_name" \
+        --env="POD_NAMESPACE=$apb_name" \
+        --image=$apb_name \
+        --image-pull-policy=Never \
+        --restart=Never \
+        --attach=true \
+        --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
+        -- $method -e namespace=$apb_name -e cluster=$CLUSTER
+    printf "\n"
+    $CMD get all -n $apb_name
+    printf "\n"
+}
+
+function setup_openshift() {
     printf ${green}"Testing APB in OpenShift"${neutral}"\n"
     echo -en 'travis_fold:start:openshift\\r'
     printf ${yellow}"Setting up docker for insecure registry"${neutral}"\n"
@@ -36,6 +56,7 @@ function test_openshift() {
 
     # Use for cluster operations
     CMD=oc
+    CLUSTER=openshift
 }
 
 function setup_kubernetes() {
@@ -70,6 +91,7 @@ function setup_kubernetes() {
 
     # Use for cluster operations
     CMD=kubectl
+    CLUSTER=kubernetes
 }
 
 printf ${yellow}"Installing requirements"${neutral}"\n"
@@ -122,47 +144,19 @@ $CMD create serviceaccount -n $apb_name $apb_name
 $CMD create clusterrolebinding $apb_name --clusterrole=cluster-admin --serviceaccount=$apb_name:$apb_name
 printf "\n"
 
-printf ${yellow}"Provision APB"${neutral}"\n"
-$CMD run "$apb_name-provision" \
-    --namespace=$apb_name \
-    --env="POD_NAME=$apb_name-provision" \
-    --env="POD_NAMESPACE=$apb_name" \
-    --image=$apb_name \
-    --image-pull-policy=Never \
-    --restart=Never \
-    --attach=true \
-    --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-    -- provision -e namespace=$apb_name -e cluster=kubernetes
-$CMD get all -n $apb_name
-printf "\n"
+# Run the playbooks
+run_apb "provision"
+if [ -f "$PWD/playbooks/bind.yml" ]; then
+    run_apb "bind"
+fi
+if [ -f "$PWD/playbooks/unbind.yml" ]; then
+    run_apb "unbind"
+fi
+run_apb "deprovision"
 
-printf ${yellow}"Deprovision APB"${neutral}"\n"
-$CMD run "$apb_name-deprovision" \
-    --namespace=$apb_name \
-    --env="POD_NAME=$apb_name-deprovision" \
-    --env="POD_NAMESPACE=$apb_name" \
-    --image=$apb_name \
-    --image-pull-policy=Never \
-    --restart=Never \
-    --attach=true \
-    --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-    -- deprovision -e namespace=$apb_name -e cluster=kubernetes
-$CMD get all -n $apb_name
-printf "\n"
-
+# Run the test playbook if it exists
 if [ -f "$PWD/playbooks/test.yml" ]; then
-    printf ${green}"Run Test Playbook"${neutral}"\n"
-    $CMD run "$apb_name-test" \
-        --namespace=$apb_name \
-        --env="POD_NAME=$apb_name-test" \
-        --env="POD_NAMESPACE=$apb_name" \
-        --image=$apb_name \
-        --image-pull-policy=Never \
-        --restart=Never \
-        --attach=true \
-        --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-        -- test -e namespace=$apb_name -e cluster=kubernetes
-    printf "\n"
+    run_apb "test"
 else
     printf ${yellow}"No test playbook"${neutral}"\n"
 fi
