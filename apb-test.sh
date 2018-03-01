@@ -146,17 +146,19 @@ printf "\n"
 
 # Run the playbooks
 run_apb "provision"
-if [ -f "$PWD/playbooks/bind.yml" ]; then
-    run_apb "bind"
-fi
-if [ -f "$PWD/playbooks/unbind.yml" ]; then
-    run_apb "unbind"
-fi
-run_apb "deprovision"
-
-# Run the test playbook if it exists
-if [ -f "$PWD/playbooks/test.yml" ]; then
-    run_apb "test"
+run_apb "bind" || if [ $? -eq 8 ]; then
+    printf ${yellow}"No bind playbook"${neutral}"\n"
 else
+    exit $?
+fi
+run_apb "unbind" || if [ $? -eq 8 ]; then
+    printf ${yellow}"No unbind playbook"${neutral}"\n"
+else
+    exit $?
+fi
+run_apb "deprovision" # Not optional
+run_apb "test" || if [ $? -eq 8 ]; then
     printf ${yellow}"No test playbook"${neutral}"\n"
+else
+    exit $?
 fi
