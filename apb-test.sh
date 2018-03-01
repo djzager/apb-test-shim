@@ -19,6 +19,7 @@ function run_apb() {
     local pod_name="$apb_name-$action"
 
     printf ${green}"Run $action Playbook"${neutral}"\n"
+    echo -en 'travis_fold:start:'$pod_name'\\r'
     $CMD run "$pod_name" \
         --namespace=$apb_name \
         --env="POD_NAME=$pod_name" \
@@ -38,6 +39,7 @@ function run_apb() {
 
     printf "\n"
     $CMD get all -n $apb_name
+    echo -en 'travis_fold:end:'$pod_name'\\r'
     printf "\n"
 }
 
