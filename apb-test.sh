@@ -15,10 +15,10 @@ neutral='\033[0m'
 apb_name=${apb_name:-"test-apb"}
 
 function run_apb() {
-    local method=$1
-    local pod_name="$apb_name-$method"
+    local action=$1
+    local pod_name="$apb_name-$action"
 
-    printf ${green}"Run $method Playbook"${neutral}"\n"
+    printf ${green}"Run $action Playbook"${neutral}"\n"
     $CMD run "$pod_name" \
         --namespace=$apb_name \
         --env="POD_NAME=$pod_name" \
@@ -28,7 +28,14 @@ function run_apb() {
         --restart=Never \
         --attach=true \
         --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-        -- $method -e namespace=$apb_name -e cluster=$CLUSTER
+        -- $action -e namespace=$apb_name -e cluster=$CLUSTER || \
+        if [ $? -eq 8 ] && [[ $action != *provision ]]; then
+            printf ${yellow}"Optional action ($action) not implemented"${neutral}"\n"
+        else
+            printf ${red}"Run of $action Playbook FAILED"${neutral}"\n"
+            exit $?
+        fi
+
     printf "\n"
     $CMD get all -n $apb_name
     printf "\n"
@@ -145,20 +152,6 @@ $CMD create clusterrolebinding $apb_name --clusterrole=cluster-admin --serviceac
 printf "\n"
 
 # Run the playbooks
-run_apb "provision"
-run_apb "bind" || if [ $? -eq 8 ]; then
-    printf ${yellow}"No bind playbook"${neutral}"\n"
-else
-    exit $?
-fi
-run_apb "unbind" || if [ $? -eq 8 ]; then
-    printf ${yellow}"No unbind playbook"${neutral}"\n"
-else
-    exit $?
-fi
-run_apb "deprovision" # Not optional
-run_apb "test" || if [ $? -eq 8 ]; then
-    printf ${yellow}"No test playbook"${neutral}"\n"
-else
-    exit $?
-fi
+for ACTION in "provision" "bind" "unbind" "deprovision" "test"; do
+    run_apb $ACTION
+done
