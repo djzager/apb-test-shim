@@ -8,8 +8,13 @@ python:
 env:
   - OPENSHIFT_VERSION=latest
   - OPENSHIFT_VERSION=v3.9
+  - KUBERNETES_VERSION=latest
+  - KUBERNETES_VERSION=v1.9.0
 
 script:
+  # TODO: Configure test values
+  # - export apb_name='test-apb'
+
   # Download test shim.
   - wget -O ${PWD}/apb-test.sh https://raw.githubusercontent.com/djzager/apb-test-shim/master/apb-test.sh
   - chmod +x ${PWD}/apb-test.sh
