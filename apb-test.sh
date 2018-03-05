@@ -29,14 +29,7 @@ function run_apb() {
         --restart=Never \
         --attach=true \
         --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-        -- $action -e namespace=$apb_name -e cluster=$CLUSTER || \
-        if [ $? -eq 8 ] && [[ $action != *provision ]]; then
-            printf ${yellow}"Optional action ($action) not implemented"${neutral}"\n"
-        else
-            printf ${red}"Run of $action Playbook FAILED"${neutral}"\n"
-            exit $?
-        fi
-
+        -- $action -e namespace=$apb_name -e cluster=$CLUSTER
     printf "\n"
     $CMD get all -n $apb_name
     echo -en 'travis_fold:end:'$pod_name'\\r'
@@ -163,7 +156,5 @@ $CMD create serviceaccount -n $apb_name $apb_name
 $CMD create clusterrolebinding $apb_name --clusterrole=cluster-admin --serviceaccount=$apb_name:$apb_name
 printf "\n"
 
-# Run the playbooks
-for ACTION in "provision" "bind" "unbind" "deprovision" "test"; do
-    run_apb $ACTION
-done
+# Run the test
+run_apb "test"
