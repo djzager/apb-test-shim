@@ -87,14 +87,11 @@ function setup_kubernetes() {
     fi
     minikube update-context
 
-	# this for loop waits until kubectl can access the api server that Minikube has created
-	for i in {1..150}; do # timeout for 5 minutes
-	   kubectl get po &> /dev/null
-	   if [ $? -ne 1 ]; then
-		  break
-	  fi
-	  sleep 2
-	done
+    # this for loop waits until kubectl can access the api server that Minikube has created
+    for i in {1..150}; do # timeout for 5 minutes
+      kubectl get po &> /dev/null && break
+      sleep 2
+    done
 
     docker build -t $apb_name -f Dockerfile .
     kubectl create namespace $apb_name
@@ -122,7 +119,7 @@ printf ${green}"Preparing apb"${neutral}"\n"
 echo -en 'travis_fold:start:prepare.1\\r'
 apb build --tag $apb_name
 if ! git diff --exit-code
-	then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
+    then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
 fi
 echo -en 'travis_fold:end:prepare.1\\r'
