@@ -4,7 +4,7 @@
 # https://gist.github.com/geerlingguy/73ef1e5ee45d8694570f334be385e181
 
 # Exit on any individual command failure.
-set -e
+set -ex
 
 # Pretty colors.
 red='\033[0;31m'
@@ -29,7 +29,7 @@ function run_apb() {
         --restart=Never \
         --attach=true \
         --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-        -- $action -e namespace=$apb_name -e cluster=$CLUSTER
+        -- $action -e namespace=$apb_name -e cluster=$CLUSTER -vvv
     printf "\n"
     $CMD get all -n $apb_name
     echo -en 'travis_fold:end:'$pod_name'\\r'
