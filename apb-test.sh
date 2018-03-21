@@ -43,15 +43,14 @@ function setup_openshift() {
     sudo apt-get update -qq
     sudo sed -i "s/\DOCKER_OPTS=\"/DOCKER_OPTS=\"--insecure-registry=172.30.0.0\/16 /g" /etc/default/docker
     sudo cat /etc/default/docker
-    sudo service docker restart
     sudo iptables -F
+    sudo service docker restart
     printf "\n"
 
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
     oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
-    oc login -u system:admin
-    docker build -t $apb_name -f Dockerfile .
+    #docker build -t $apb_name -f Dockerfile .
     oc new-project $apb_name
     echo -en 'travis_fold:end:openshift\\r'
     printf "\n"
@@ -93,7 +92,7 @@ function setup_kubernetes() {
       sleep 2
     done
 
-    docker build -t $apb_name -f Dockerfile .
+    #docker build -t $apb_name -f Dockerfile .
     kubectl create namespace $apb_name
     echo -en 'travis_fold:end:minikube\\r'
     printf "\n"
@@ -149,8 +148,11 @@ fi
 
 # Get enough permissions for APB to run
 printf ${yellow}"Creating project sandbox for APB"${neutral}"\n"
-$CMD create serviceaccount -n $apb_name $apb_name
-$CMD create clusterrolebinding $apb_name --clusterrole=cluster-admin --serviceaccount=$apb_name:$apb_name
+$CMD create serviceaccount $apb_name --namespace=$apb_name
+$CMD create rolebinding $apb_name \
+    --namespace=$apb_name \
+    --clusterrole=edit \
+    --serviceaccount=$apb_name:$apb_name
 printf "\n"
 
 # Run the test
