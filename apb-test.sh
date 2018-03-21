@@ -28,7 +28,7 @@ function run_apb() {
         --image-pull-policy=Never \
         --restart=Never \
         --attach=true \
-        --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
+        --serviceaccount=$apb_name \
         -- $action -e namespace=$apb_name -e cluster=$CLUSTER -vvv
     printf "\n"
     $CMD get all -n $apb_name
@@ -115,14 +115,14 @@ yamllint apb.yml
 echo -en 'travis_fold:end:lint.1\\r'
 printf "\n"
 
-printf ${green}"Preparing apb"${neutral}"\n"
-echo -en 'travis_fold:start:prepare.1\\r'
+printf ${green}"Building apb"${neutral}"\n"
+echo -en 'travis_fold:start:build.1\\r'
 apb build --tag $apb_name
 if ! git diff --exit-code
     then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
 fi
-echo -en 'travis_fold:end:prepare.1\\r'
+echo -en 'travis_fold:end:build.1\\r'
 printf "\n"
 
 printf ${green}"Linting playbooks"${neutral}"\n"
