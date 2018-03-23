@@ -49,7 +49,11 @@ function setup_openshift() {
 
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
-    oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
+    if [ "$OPENSHIFT_VERSION" == "latest" ]; then
+        oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --tag=$OPENSHIFT_VERSION
+    else
+        oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
+    fi
     #docker build -t $apb_name -f Dockerfile .
     oc new-project $apb_name
     echo -en 'travis_fold:end:openshift\\r'
