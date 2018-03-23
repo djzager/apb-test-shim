@@ -4,7 +4,7 @@
 # https://gist.github.com/geerlingguy/73ef1e5ee45d8694570f334be385e181
 
 # Exit on any individual command failure.
-set -e
+set -ex
 
 # Pretty colors.
 red='\033[0;31m'
@@ -28,8 +28,8 @@ function run_apb() {
         --image-pull-policy=Never \
         --restart=Never \
         --attach=true \
-        --overrides='{ "spec": { "serviceAccountName": "'$apb_name'" } }' \
-        -- $action -e namespace=$apb_name -e cluster=$CLUSTER
+        --serviceaccount=$apb_name \
+        -- $action -e namespace=$apb_name -e cluster=$CLUSTER -vvv
     printf "\n"
     $CMD get all -n $apb_name
     echo -en 'travis_fold:end:'$pod_name'\\r'
@@ -43,15 +43,14 @@ function setup_openshift() {
     sudo apt-get update -qq
     sudo sed -i "s/\DOCKER_OPTS=\"/DOCKER_OPTS=\"--insecure-registry=172.30.0.0\/16 /g" /etc/default/docker
     sudo cat /etc/default/docker
-    sudo service docker restart
     sudo iptables -F
+    sudo service docker restart
     printf "\n"
 
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
     oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
-    oc login -u system:admin
-    docker build -t $apb_name -f Dockerfile .
+    #docker build -t $apb_name -f Dockerfile .
     oc new-project $apb_name
     echo -en 'travis_fold:end:openshift\\r'
     printf "\n"
@@ -93,7 +92,7 @@ function setup_kubernetes() {
       sleep 2
     done
 
-    docker build -t $apb_name -f Dockerfile .
+    #docker build -t $apb_name -f Dockerfile .
     kubectl create namespace $apb_name
     echo -en 'travis_fold:end:minikube\\r'
     printf "\n"
@@ -115,14 +114,14 @@ yamllint apb.yml
 echo -en 'travis_fold:end:lint.1\\r'
 printf "\n"
 
-printf ${green}"Preparing apb"${neutral}"\n"
-echo -en 'travis_fold:start:prepare.1\\r'
+printf ${green}"Building apb"${neutral}"\n"
+echo -en 'travis_fold:start:build.1\\r'
 apb build --tag $apb_name
 if ! git diff --exit-code
     then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
     exit 1
 fi
-echo -en 'travis_fold:end:prepare.1\\r'
+echo -en 'travis_fold:end:build.1\\r'
 printf "\n"
 
 printf ${green}"Linting playbooks"${neutral}"\n"
@@ -149,8 +148,11 @@ fi
 
 # Get enough permissions for APB to run
 printf ${yellow}"Creating project sandbox for APB"${neutral}"\n"
-$CMD create serviceaccount -n $apb_name $apb_name
-$CMD create clusterrolebinding $apb_name --clusterrole=cluster-admin --serviceaccount=$apb_name:$apb_name
+$CMD create serviceaccount $apb_name --namespace=$apb_name
+$CMD create rolebinding $apb_name \
+    --namespace=$apb_name \
+    --clusterrole=edit \
+    --serviceaccount=$apb_name:$apb_name
 printf "\n"
 
 # Run the test
