@@ -84,9 +84,9 @@ function setup_kubernetes() {
     export KUBECONFIG=$HOME/.kube/config
 
     if [ "$KUBERNETES_VERSION" == "latest" ]; then
-        sudo -E minikube start --vm-driver=none
+        sudo -E minikube start --bootstrapper=localkube --vm-driver=none
     else
-        sudo -E minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
+        sudo -E minikube start --bootstrapper=localkube --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
     fi
     minikube update-context
 
