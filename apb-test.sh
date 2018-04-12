@@ -13,6 +13,8 @@ yellow='\033[0;33m'
 neutral='\033[0m'
 
 apb_name=${apb_name:-"test-apb"}
+# minikube_version="latest" -- https://github.com/kubernetes/minikube/issues/2704
+minikube_version="v0.25.2"
 
 function run_apb() {
     local action=$1
@@ -70,7 +72,7 @@ function setup_kubernetes() {
     # https://github.com/kubernetes/minikube#linux-continuous-integration-without-vm-support
     printf ${yellow}"Bringing up minikube"${neutral}"\n"
     echo -en 'travis_fold:start:minikube\\r'
-    sudo curl -Lo /usr/bin/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo curl -Lo /usr/bin/minikube https://storage.googleapis.com/minikube/releases/$minikube_version/minikube-linux-amd64
     sudo chmod +x /usr/bin/minikube
     sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
     sudo chmod +x /usr/bin/kubectl
@@ -84,9 +86,9 @@ function setup_kubernetes() {
     export KUBECONFIG=$HOME/.kube/config
 
     if [ "$KUBERNETES_VERSION" == "latest" ]; then
-        sudo -E minikube start --bootstrapper=localkube --vm-driver=none
+        sudo -E minikube start --vm-driver=none
     else
-        sudo -E minikube start --bootstrapper=localkube --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
+        sudo -E minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
     fi
     minikube update-context
 
