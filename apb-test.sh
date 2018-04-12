@@ -50,7 +50,7 @@ function setup_openshift() {
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
     if [ "$OPENSHIFT_VERSION" == "latest" ]; then
-        oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --tag=$OPENSHIFT_VERSION
+        oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --tag=$OPENSHIFT_VERSION --enable=router
     else
         oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
     fi
@@ -84,9 +84,9 @@ function setup_kubernetes() {
     export KUBECONFIG=$HOME/.kube/config
 
     if [ "$KUBERNETES_VERSION" == "latest" ]; then
-        sudo minikube start --vm-driver=none
+        sudo -E minikube start --vm-driver=none
     else
-        sudo minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
+        sudo -E minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
     fi
     minikube update-context
 
