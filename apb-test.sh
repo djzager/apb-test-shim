@@ -13,6 +13,9 @@ yellow='\033[0;33m'
 neutral='\033[0m'
 
 apb_name=${apb_name:-"test-apb"}
+cluster_role=${cluster_role:-"edit"}
+binding=${binding:-"rolebinding"}
+
 # minikube_version="latest" -- https://github.com/kubernetes/minikube/issues/2704
 minikube_version="v0.25.2"
 
@@ -31,7 +34,7 @@ function run_apb() {
         --restart=Never \
         --attach=true \
         --serviceaccount=$apb_name \
-        -- $action -e namespace=$apb_name -e cluster=$CLUSTER -vvv
+        -- $action -e namespace=$apb_name -e cluster=$CLUSTER
     printf "\n"
     $CMD get all -n $apb_name
     echo -en 'travis_fold:end:'$pod_name'\\r'
@@ -52,16 +55,26 @@ function setup_openshift() {
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
     if [ "$OPENSHIFT_VERSION" == "latest" ]; then
-        oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --tag=$OPENSHIFT_VERSION --enable=router
+        oc cluster up \
+            --routing-suffix=172.17.0.1.nip.io \
+            --public-hostname=172.17.0.1 \
+            --tag=$OPENSHIFT_VERSION \
+            --enable=service-catalog,template-service-broker,router,registry,web-console,persistent-volumes,sample-templates,rhel-imagestreams
     else
-        oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
+        oc cluster up \
+            --routing-suffix=172.17.0.1.nip.io \
+            --public-hostname=172.17.0.1 \
+            --version=$OPENSHIFT_VERSION \
+            --service-catalog=true
     fi
     echo -en 'travis_fold:end:openshift\\r'
     printf "\n"
 
+    oc login -u system:admin
+
     # Use for cluster operations
-    CMD=oc
-    CLUSTER=openshift
+    export CMD=oc
+    export CLUSTER=openshift
 }
 
 function setup_kubernetes() {
@@ -74,6 +87,7 @@ function setup_kubernetes() {
     sudo chmod +x /usr/bin/minikube
     sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
     sudo chmod +x /usr/bin/kubectl
+    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
 
     export MINIKUBE_WANTUPDATENOTIFICATION=false
     export MINIKUBE_WANTREPORTERRORPROMPT=false
@@ -84,9 +98,9 @@ function setup_kubernetes() {
     export KUBECONFIG=$HOME/.kube/config
 
     if [ "$KUBERNETES_VERSION" == "latest" ]; then
-        sudo -E minikube start --vm-driver=none
+        sudo -E minikube start --vm-driver=none --extra-config=apiserver.Authorization.Mode=RBAC
     else
-        sudo -E minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION
+        sudo -E minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION --extra-config=apiserver.Authorization.Mode=RBAC
     fi
     minikube update-context
 
@@ -96,18 +110,29 @@ function setup_kubernetes() {
       sleep 2
     done
 
+    # Install service-catalog
+    helm init --wait
+    kubectl create clusterrolebinding tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
+    helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
+    helm install svc-cat/catalog --name catalog --namespace catalog
+    # Wait until the catalog is ready before moving on
+    until kubectl get pods -n catalog -l app=catalog-catalog-apiserver | grep 2/2; do sleep 1; done
+    until kubectl get pods -n catalog -l app=catalog-catalog-controller-manager | grep 1/1; do sleep 1; done
+
     echo -en 'travis_fold:end:minikube\\r'
     printf "\n"
 
     # Use for cluster operations
-    CMD=kubectl
-    CLUSTER=kubernetes
+    export CMD=kubectl
+    export CLUSTER=kubernetes
 }
 
 function requirements() {
     printf ${yellow}"Installing requirements"${neutral}"\n"
     echo -en 'travis_fold:start:install_requirements\\r'
     pip install --pre ansible apb yamllint
+    # Install nsenter
+    docker run --rm jpetazzo/nsenter cat /nsenter > /tmp/nsenter 2> /dev/null; sudo cp /tmp/nsenter /usr/local/bin/; sudo chmod +x /usr/local/bin/nsenter; which nsenter
     echo -en 'travis_fold:end:install_requirements\\r'
     printf "\n"
 }
@@ -169,12 +194,12 @@ function create_apb_namespace() {
     fi
 }
 
-function create_apb_permissions() {
+function create_sa() {
     printf ${yellow}"Get enough permissions for APB to run"${neutral}"\n"
     $CMD create serviceaccount $apb_name --namespace=$apb_name
-    $CMD create rolebinding $apb_name \
+    $CMD create $binding $apb_name \
         --namespace=$apb_name \
-        --clusterrole=edit \
+        --clusterrole=$cluster_role \
         --serviceaccount=$apb_name:$apb_name
     printf "\n"
 }
@@ -187,7 +212,7 @@ function test_apb() {
     lint_playbooks
     setup_cluster
     create_apb_namespace
-    create_apb_permissions
+    create_sa
     run_apb "test"
 }
 
