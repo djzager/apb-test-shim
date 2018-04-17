@@ -56,8 +56,6 @@ function setup_openshift() {
     else
         oc cluster up --routing-suffix=172.17.0.1.nip.io --public-hostname=172.17.0.1 --version=$OPENSHIFT_VERSION
     fi
-    #docker build -t $apb_name -f Dockerfile .
-    oc new-project $apb_name
     echo -en 'travis_fold:end:openshift\\r'
     printf "\n"
 
@@ -98,8 +96,6 @@ function setup_kubernetes() {
       sleep 2
     done
 
-    #docker build -t $apb_name -f Dockerfile .
-    kubectl create namespace $apb_name
     echo -en 'travis_fold:end:minikube\\r'
     printf "\n"
 
@@ -108,58 +104,94 @@ function setup_kubernetes() {
     CLUSTER=kubernetes
 }
 
-printf ${yellow}"Installing requirements"${neutral}"\n"
-echo -en 'travis_fold:start:install_requirements\\r'
-pip install --pre ansible apb yamllint
-echo -en 'travis_fold:end:install_requirements\\r'
-printf "\n"
+function requirements() {
+    printf ${yellow}"Installing requirements"${neutral}"\n"
+    echo -en 'travis_fold:start:install_requirements\\r'
+    pip install --pre ansible apb yamllint
+    echo -en 'travis_fold:end:install_requirements\\r'
+    printf "\n"
+}
 
-printf ${green}"Linting apb.yml"${neutral}"\n"
-echo -en 'travis_fold:start:lint.1\\r'
-yamllint apb.yml
-echo -en 'travis_fold:end:lint.1\\r'
-printf "\n"
+function lint_apb() {
+    printf ${green}"Linting apb.yml"${neutral}"\n"
+    echo -en 'travis_fold:start:lint.1\\r'
+    yamllint apb.yml
+    echo -en 'travis_fold:end:lint.1\\r'
+    printf "\n"
+}
 
-printf ${green}"Building apb"${neutral}"\n"
-echo -en 'travis_fold:start:build.1\\r'
-apb build --tag $apb_name
-if ! git diff --exit-code
-    then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
-    exit 1
-fi
-echo -en 'travis_fold:end:build.1\\r'
-printf "\n"
+function build_apb() {
+    printf ${green}"Building apb"${neutral}"\n"
+    echo -en 'travis_fold:start:build.1\\r'
+    apb build --tag $apb_name
+    if ! git diff --exit-code
+        then printf ${red}"Committed APB spec differs from built apb.yml spec"${neutral}"\n"
+        exit 1
+    fi
+    echo -en 'travis_fold:end:build.1\\r'
+    printf "\n"
+}
 
-printf ${green}"Linting playbooks"${neutral}"\n"
-echo -en 'travis_fold:start:lint.2\\r'
-playbooks=$(find playbooks -type f -printf "%f\n" -name '*.yml' -o -name '*.yaml')
-if [ -z "$playbooks" ]; then
-    printf ${red}"No playbooks"${neutral}"\n"
-    exit 1
-fi
-for playbook in $playbooks; do
-    docker run --entrypoint ansible-playbook $apb_name /opt/apb/actions/$playbook --syntax-check
-done
-echo -en 'travis_fold:end:lint.2\\r'
-printf "\n"
+function lint_playbooks() {
+    printf ${green}"Linting playbooks"${neutral}"\n"
+    echo -en 'travis_fold:start:lint.2\\r'
+    playbooks=$(find playbooks -type f -printf "%f\n" -name '*.yml' -o -name '*.yaml')
+    if [ -z "$playbooks" ]; then
+        printf ${red}"No playbooks"${neutral}"\n"
+        exit 1
+    fi
+    for playbook in $playbooks; do
+        docker run --entrypoint ansible-playbook $apb_name /opt/apb/actions/$playbook --syntax-check
+    done
+    echo -en 'travis_fold:end:lint.2\\r'
+    printf "\n"
+}
 
-if [ -n "$OPENSHIFT_VERSION" ]; then
-    setup_openshift
-elif [ -n "$KUBERNETES_VERSION" ]; then
-    setup_kubernetes
-else
-    printf ${red}"No cluster environment variables set"${neutral}"\n"
-    exit 1
-fi
+function setup_cluster() {
+    if [ -n "$OPENSHIFT_VERSION" ]; then
+        setup_openshift
+    elif [ -n "$KUBERNETES_VERSION" ]; then
+        setup_kubernetes
+    else
+        printf ${red}"No cluster environment variables set"${neutral}"\n"
+        exit 1
+    fi
+}
 
-# Get enough permissions for APB to run
-printf ${yellow}"Creating project sandbox for APB"${neutral}"\n"
-$CMD create serviceaccount $apb_name --namespace=$apb_name
-$CMD create rolebinding $apb_name \
-    --namespace=$apb_name \
-    --clusterrole=edit \
-    --serviceaccount=$apb_name:$apb_name
-printf "\n"
+function create_apb_namespace() {
+    if [ -n "$OPENSHIFT_VERSION" ]; then
+        oc new-project $apb_name
+    elif [ -n "$KUBERNETES_VERSION" ]; then
+        kubectl create namespace $apb_name
+    else
+        printf ${red}"No cluster environment variables set"${neutral}"\n"
+        exit 1
+    fi
+}
+
+function create_apb_permissions() {
+    printf ${yellow}"Get enough permissions for APB to run"${neutral}"\n"
+    $CMD create serviceaccount $apb_name --namespace=$apb_name
+    $CMD create rolebinding $apb_name \
+        --namespace=$apb_name \
+        --clusterrole=edit \
+        --serviceaccount=$apb_name:$apb_name
+    printf "\n"
+}
 
 # Run the test
-run_apb "test"
+function test_apb() {
+    requirements
+    lint_apb
+    build_apb
+    lint_playbooks
+    setup_cluster
+    create_apb_namespace
+    create_apb_permissions
+    run_apb "test"
+}
+
+# Allow the functions to be loaded, skipping the test run
+if [ -z $SOURCE_ONLY ]; then
+    test_apb
+fi
