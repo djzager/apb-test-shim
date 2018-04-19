@@ -16,9 +16,6 @@ apb_name=${apb_name:-"test-apb"}
 cluster_role=${cluster_role:-"edit"}
 binding=${binding:-"rolebinding"}
 
-# minikube_version="latest" -- https://github.com/kubernetes/minikube/issues/2704
-minikube_version="v0.25.2"
-
 function run_apb() {
     local action=$1
     local pod_name="$apb_name-$action"
@@ -83,7 +80,7 @@ function setup_kubernetes() {
     # https://github.com/kubernetes/minikube#linux-continuous-integration-without-vm-support
     printf ${yellow}"Bringing up minikube"${neutral}"\n"
     echo -en 'travis_fold:start:minikube\\r'
-    sudo curl -Lo /usr/bin/minikube https://storage.googleapis.com/minikube/releases/$minikube_version/minikube-linux-amd64
+    sudo curl -Lo /usr/bin/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
     sudo chmod +x /usr/bin/minikube
     sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
     sudo chmod +x /usr/bin/kubectl
@@ -98,9 +95,16 @@ function setup_kubernetes() {
     export KUBECONFIG=$HOME/.kube/config
 
     if [ "$KUBERNETES_VERSION" == "latest" ]; then
-        sudo -E minikube start --vm-driver=none --extra-config=apiserver.Authorization.Mode=RBAC
+        sudo minikube start \
+            --vm-driver=none \
+            --bootstrapper=localkube \
+            --extra-config=apiserver.Authorization.Mode=RBAC
     else
-        sudo -E minikube start --vm-driver=none --kubernetes-version=$KUBERNETES_VERSION --extra-config=apiserver.Authorization.Mode=RBAC
+        sudo minikube start \
+            --vm-driver=none \
+            --bootstrapper=localkube \
+            --extra-config=apiserver.Authorization.Mode=RBAC \
+            --kubernetes-version=$KUBERNETES_VERSION
     fi
     minikube update-context
 
