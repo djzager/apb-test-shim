@@ -16,6 +16,9 @@ apb_name=${apb_name:-"test-apb"}
 cluster_role=${cluster_role:-"edit"}
 binding=${binding:-"rolebinding"}
 
+# Lock Helm version until latest is functional
+DESIRED_HELM_VERSION="v2.8.2"
+
 function run_apb() {
     local action=$1
     local pod_name="$apb_name-$action"
@@ -84,7 +87,7 @@ function setup_kubernetes() {
     sudo chmod +x /usr/bin/minikube
     sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
     sudo chmod +x /usr/bin/kubectl
-    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
+    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | DESIRED_VERSION=$DESIRED_HELM_VERSION bash
 
     export MINIKUBE_WANTUPDATENOTIFICATION=false
     export MINIKUBE_WANTREPORTERRORPROMPT=false
