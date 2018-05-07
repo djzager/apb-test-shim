@@ -137,9 +137,7 @@ function setup_kubernetes() {
 function requirements() {
     printf ${yellow}"Installing requirements"${neutral}"\n"
     echo -en 'travis_fold:start:install_requirements\\r'
-    export PATH=$HOME/.local/bin:$PATH
-    sudo pip install --pre apb yamllint --user `whoami`
-
+    pip install --pre ansible apb yamllint
     # Install nsenter
     docker run --rm jpetazzo/nsenter cat /nsenter > /tmp/nsenter 2> /dev/null; sudo cp /tmp/nsenter /usr/local/bin/; sudo chmod +x /usr/local/bin/nsenter; which nsenter
     echo -en 'travis_fold:end:install_requirements\\r'
