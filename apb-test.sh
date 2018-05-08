@@ -55,7 +55,7 @@ function setup_openshift() {
 
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
-    if [ "$OPENSHIFT_VERSION" == "latest" ] || [[ "$OPENSHIFT_VERSION" =~ 3\.10[\.]+[0-9]+ ]]; then
+    if [ "$OPENSHIFT_VERSION" == "latest" ] || [ "${OPENSHIFT_VERSION:0:5}" == "v3.10" ]; then
         oc cluster up \
             --routing-suffix=172.17.0.1.nip.io \
             --public-hostname=172.17.0.1 \
