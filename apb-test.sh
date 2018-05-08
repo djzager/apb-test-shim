@@ -206,6 +206,7 @@ function create_apb_namespace() {
         printf ${red}"No cluster environment variables set"${neutral}"\n"
         exit 1
     fi
+    kubectl get namespace $apb_name -o yaml
 }
 
 function create_sa() {
@@ -215,6 +216,9 @@ function create_sa() {
         --namespace=$apb_name \
         --clusterrole=$cluster_role \
         --serviceaccount=$apb_name:$apb_name
+    $CMD get serviceaccount $apb_name --namespace=$apb_name -o yaml
+    $CMD get $binding $apb_name --namespace=$apb_name -o yaml
+    sleep 5
     printf "\n"
 }
 
