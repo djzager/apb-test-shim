@@ -55,6 +55,8 @@ function setup_openshift() {
 
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
+    sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+    sudo chmod +x /usr/bin/kubectl
     if [ "$OPENSHIFT_VERSION" == "latest" ] || [ "${OPENSHIFT_VERSION:0:5}" == "v3.10" ]; then
         oc cluster up \
             --routing-suffix=172.17.0.1.nip.io \
