@@ -76,6 +76,7 @@ function setup_openshift() {
     # Use for cluster operations
     export CMD=oc
     export CLUSTER=openshift
+    alias kubectl='oc'
 }
 
 function setup_kubernetes() {
@@ -133,6 +134,7 @@ function setup_kubernetes() {
     # Use for cluster operations
     export CMD=kubectl
     export CLUSTER=kubernetes
+    alias oc='kubectl'
 }
 
 function requirements() {
