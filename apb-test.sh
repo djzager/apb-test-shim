@@ -60,7 +60,7 @@ function setup_openshift() {
             --routing-suffix=172.17.0.1.nip.io \
             --public-hostname=172.17.0.1 \
             --tag=$OPENSHIFT_VERSION \
-            --enable=service-catalog,template-service-broker,router,registry,web-console,persistent-volumes,sample-templates,rhel-imagestreams
+            --enable=service-catalog
     else
         oc cluster up \
             --routing-suffix=172.17.0.1.nip.io \
