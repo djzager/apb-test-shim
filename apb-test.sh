@@ -55,8 +55,7 @@ function setup_openshift() {
 
     printf ${yellow}"Bringing up an openshift cluster and logging in"${neutral}"\n"
     sudo docker cp $(docker create docker.io/openshift/origin:$OPENSHIFT_VERSION):/bin/oc /usr/local/bin/oc
-    sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-    sudo chmod +x /usr/bin/kubectl
+    sudo cp /usr/local/bin/oc /usr/local/bin/kubectl
     if [ "$OPENSHIFT_VERSION" == "latest" ] || [ "${OPENSHIFT_VERSION:0:5}" == "v3.10" ]; then
         oc cluster up \
             --routing-suffix=172.17.0.1.nip.io \
@@ -89,7 +88,11 @@ function setup_kubernetes() {
     echo -en 'travis_fold:start:minikube\\r'
     sudo curl -Lo /usr/bin/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
     sudo chmod +x /usr/bin/minikube
-    sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+    if [ "$KUBERNETES_VERSION" == "latest" ]; then
+        sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+    else
+        sudo curl -Lo /usr/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$KUBERNETES_VERSION/bin/linux/amd64/kubectl
+    fi
     sudo chmod +x /usr/bin/kubectl
     curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | DESIRED_VERSION=$DESIRED_HELM_VERSION bash
 
