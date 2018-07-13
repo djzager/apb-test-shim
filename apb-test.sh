@@ -35,7 +35,7 @@ function run_apb() {
         --restart=Never \
         --attach=true \
         --serviceaccount=$apb_name \
-        -- $action -e namespace=$apb_name -e cluster=$CLUSTER
+        -- $action --extra-vars { "namespace": "$apb_name", "cluster": "$CLUSTER" }
     printf "\n"
     $CMD get all -n $apb_name
     echo -en 'travis_fold:end:'$pod_name'\\r'
