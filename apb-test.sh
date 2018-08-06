@@ -128,7 +128,8 @@ function setup_kubernetes() {
     helm init --wait
     kubectl create clusterrolebinding tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
     helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
-    helm install svc-cat/catalog --name catalog --namespace catalog
+    # TODO: Remove when 0.1.29 is released
+    helm install svc-cat/catalog --version 0.1.27 --name catalog --namespace catalog
     # Wait until the catalog is ready before moving on
     until kubectl get pods -n catalog -l app=catalog-catalog-apiserver | grep 2/2; do sleep 1; done
     until kubectl get pods -n catalog -l app=catalog-catalog-controller-manager | grep 1/1; do sleep 1; done
